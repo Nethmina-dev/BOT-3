@@ -1,4 +1,5 @@
 const { cmd } = require('../command');
+const axios = require('axios');
 
 // Auto-wish On/Off තත්ත්වය (Default: true)
 let isAutoWishEnabled = true;
@@ -6,11 +7,10 @@ let isAutoWishEnabled = true;
 // එකම කෙනාට පාරකට වඩා reply නොයැවීමට track කිරීම
 const thankedUsers = new Set();
 
-// 🌟 Party Invitation එක යන්න ඕන Special Numbers ලැයිස්තුව (ලංකාවේ Country Code - 94 එකත් එක්ක දාන්න)
+// 🌟 Party Invitation එක යන්න ඕන Special Numbers ලැයිස්තුව
 const specialNumbers = [
     "94760127262",
     "94765456511"
-    // තව නම්බර්ස් තියෙනවා නම් කොමා (,) දාලා මෙතනින් එකතු කරන්න
 ];
 
 // Party Invitation Image URL එක
@@ -29,14 +29,13 @@ module.exports = {
         const keywords = [
             "birthday", 
             "happy",
+            "happy birthday",
             "bday", 
             "hbd", 
             "upandina", 
             "upanthina", 
             "උපන්දින", 
             "උපන් දිනය"
-
-
         ];
 
         const textMsg = body.toLowerCase();
@@ -45,40 +44,58 @@ module.exports = {
         const isWish = keywords.some(key => textMsg.includes(key));
 
         if (isWish) {
+            // 👤 ගෲප් එකක වුනත් හරියටම මැසේජ් එක එව්ව කෙනාගේ JID එක ලබාගැනීම
+            const senderJid = mek.key.participant || from;
+
             // දැනටමත් මේ කෙනාට Thank කරලා නම් ආයේ reply යවන්නේ නැත
-            if (thankedUsers.has(from)) return;
+            if (thankedUsers.has(senderJid)) return;
 
-            thankedUsers.add(from);
-
-            // 1️⃣ සාමාන්‍ය Auto Reply Text මැසේජ් එක
-            const replyMsg = `*Thank you so much* *@${from.split('@')[0]}* *for your wish!! 🫶🏻💗*`;
+            thankedUsers.add(senderJid);
 
             try {
-                // පළමුව සාමාන්‍ය Thank You Text මැසේජ් එක යැවීම
+                // 👁️ 1. මැසේජ් එක Auto Seen (Read) කිරීම
+                await conn.readMessages([mek.key]).catch(() => {});
+
+                // 2. සාමාන්‍ය Auto Reply Text මැසේජ් එක
+                const replyMsg = `*Thank you so much* *@${senderJid.split('@')[0]}* *for your wish!! 🫶🏻💗*`;
+
                 await conn.sendMessage(from, { 
                     text: replyMsg, 
-                    mentions: [from] 
+                    mentions: [senderJid] 
                 }, { quoted: mek });
 
-                // 2️⃣ Special Numbers පරීක්ෂා කිරීම (077... විදියට ආවත් 9477... විදියට හැරවීම)
-                const senderNum = from.split('@')[0]; // e.g. "94760127262"
+                // 3. Special Numbers පරීක්ෂා කිරීම
+                const senderNum = senderJid.split('@')[0].replace(/[^0-9]/g, ""); 
                 
                 const isSpecial = specialNumbers.some(num => {
-                    const cleanNum = num.replace(/[^0-9]/g, "");
-                    return senderNum.endsWith(cleanNum.startsWith("0") ? cleanNum.slice(1) : cleanNum);
+                    const cleanNum = num.replace(/[^0-9]/g, "").replace(/^0/, "");
+                    return senderNum.endsWith(cleanNum);
                 });
 
                 // Special Number එකක් නම් Party Invitation Photo එක යැවීම
                 if (isSpecial) {
-                    await new Promise(resolve => setTimeout(resolve, 1000)); // තත්පර 1ක පරතරයක් තැබීම
+                    await new Promise(resolve => setTimeout(resolve, 1500)); // තත්පර 1.5ක පරතරයක්
 
-                    const partyCaption = `🥳 *YOU'RE KINDLY INVITE TO THE PARTY EVENT!* 🎉\n\nHey *@${senderNum}*,  you are warmly invited to my Birthday Party! 🥂✨\n\nCheck out the details in the poster above. See you there! 🎈`;
+                    const partyCaption = `🥳 *YOU'RE KINDLY INVITED TO THE PARTY EVENT!* 🎉\n\nHey *@${senderNum}*, you are warmly invited to my Birthday Party! 🥂✨\n\Check out the details in the poster above. See you there! 🎈`;
 
-                    await conn.sendMessage(from, {
-                        image: { url: partyImageUrl },
-                        caption: partyCaption,
-                        mentions: [from]
-                    }, { quoted: mek });
+                    // 🖼️ Image එක Buffer එකක් විදිහට Download කරලා යැවීම (100% Reliable)
+                    try {
+                        const response = await axios.get(partyImageUrl, { responseType: 'arraybuffer' });
+                        const imgBuffer = Buffer.from(response.data, 'utf-8');
+
+                        await conn.sendMessage(from, {
+                            image: imgBuffer,
+                            caption: partyCaption,
+                            mentions: [senderJid]
+                        }, { quoted: mek });
+                    } catch (imgErr) {
+                        // Buffer එක අවුල් වුනොත් direct URL එකෙන් යැවීමට fallback වීම
+                        await conn.sendMessage(from, {
+                            image: { url: partyImageUrl },
+                            caption: partyCaption,
+                            mentions: [senderJid]
+                        }, { quoted: mek });
+                    }
                 }
 
             } catch (err) {
