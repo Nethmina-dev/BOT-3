@@ -15,22 +15,22 @@ module.exports = {
         const from = mek.key.remoteJid;
         if (!from || from === "status@broadcast") return;
 
-        // Birthday Wish අඳුනාගැනීමට Keywords (ඕන නම් තව එකතු කරන්න පුළුවන්)
-        const wishKeywords = [
-            "happy birthday", 
-            "hbd", 
-            "happy bday", 
-            "many happy returns", 
-            "many more happy returns",
-            "suba upandinayak", 
-            "suba upanthinayak",
-            "සුබ උපන්දිනක්", 
-            "සුභ උපන් දිනයක්",
-            "සුබ උපන් දිනයක්"
+        // Emojis, Punctuation, Extra spaces, Line breaks තිබ්බත් අහුවෙන Regex patterns
+        const wishPatterns = [
+            /happy\s*birth\s*day/i,
+            /happy\s*b\s*day/i,
+            /\bhbd\b/i,
+            /many\s*happy\s*returns/i,
+            /suba\s*upan\s*dinayak/i,
+            /suba\s*upan\s*thinayak/i,
+            /සුබ\s*උපන්\s*දින/i,
+            /සුභ\s*උපන්\s*දින/i
         ];
 
         const textMsg = body.toLowerCase();
-        const isWish = wishKeywords.some(keyword => textMsg.includes(keyword));
+        
+        // මැසේජ් එකේ ඕනෑම තැනක උඩ pattern එකක් තියෙනවාදැයි පරීක්ෂා කිරීම
+        const isWish = wishPatterns.some(pattern => pattern.test(textMsg));
 
         if (isWish) {
             // දැනටමත් මේ කෙනාට Thank කරලා නම් ආයේ reply යවන්නේ නැත
