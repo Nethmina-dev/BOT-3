@@ -51,7 +51,7 @@ module.exports = {
             thankedUsers.add(from);
 
             // 1️⃣ සාමාන්‍ය Auto Reply Text මැසේජ් එක
-            const replyMsg = `*Thank you so much *@${from.split('@')[0]}* for your wish!! 🫶🏻💗*`;
+            const replyMsg = `*Thank you so much* *@${from.split('@')[0]}* *for your wish!! 🫶🏻💗*`;
 
             try {
                 // පළමුව සාමාන්‍ය Thank You Text මැසේජ් එක යැවීම
