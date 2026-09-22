@@ -6,6 +6,16 @@ let isAutoWishEnabled = true;
 // එකම කෙනාට පාරකට වඩා reply නොයැවීමට track කිරීම
 const thankedUsers = new Set();
 
+// 🌟 Party Invitation එක යන්න ඕන Special Numbers ලැයිස්තුව (ලංකාවේ Country Code - 94 එකත් එක්ක දාන්න)
+const specialNumbers = [
+    "94760127262",
+    "94765456511"
+    // තව නම්බර්ස් තියෙනවා නම් කොමා (,) දාලා මෙතනින් එකතු කරන්න
+];
+
+// Party Invitation Image URL එක
+const partyImageUrl = "https://i.ibb.co/vvR742Wk/Pink-Black-Glow-in-the-Dark-Club-Party-Poster.jpg";
+
 module.exports = {
     onChat: async (conn, mek, body) => {
         if (!isAutoWishEnabled) return;
@@ -15,22 +25,24 @@ module.exports = {
         const from = mek.key.remoteJid;
         if (!from || from === "status@broadcast") return;
 
-        // Emojis, Punctuation, Extra spaces, Line breaks තිබ්බත් අහුවෙන Regex patterns
-        const wishPatterns = [
-            /happy\s*birth\s*day/i,
-            /happy\s*b\s*day/i,
-            /\bhbd\b/i,
-            /many\s*happy\s*returns/i,
-            /suba\s*upan\s*dinayak/i,
-            /suba\s*upan\s*thinayak/i,
-            /සුබ\s*උපන්\s*දින/i,
-            /සුභ\s*උපන්\s*දින/i
+        // 🎯 මැසේජ් එකේ කොතැන තිබුණත් අහුවෙන Keywords ලැයිස්තුව
+        const keywords = [
+            "birthday", 
+            "happy",
+            "bday", 
+            "hbd", 
+            "upandina", 
+            "upanthina", 
+            "උපන්දින", 
+            "උපන් දිනය"
+
+
         ];
 
         const textMsg = body.toLowerCase();
-        
-        // මැසේජ් එකේ ඕනෑම තැනක උඩ pattern එකක් තියෙනවාදැයි පරීක්ෂා කිරීම
-        const isWish = wishPatterns.some(pattern => pattern.test(textMsg));
+
+        // 🔍 මැසේජ් එක ඇතුලේ keyword එකක් තියෙනවාදැයි බලයි
+        const isWish = keywords.some(key => textMsg.includes(key));
 
         if (isWish) {
             // දැනටමත් මේ කෙනාට Thank කරලා නම් ආයේ reply යවන්නේ නැත
@@ -38,14 +50,37 @@ module.exports = {
 
             thankedUsers.add(from);
 
-            // Auto Reply මැසේජ් එක
-            const replyMsg = `❤️ *THANK YOU SO MUCH!* 🎉\n\nThank you so much, *@${from.split('@')[0]}* for the lovely birthday wish! It really made my day special. 🥰✨`;
+            // 1️⃣ සාමාන්‍ය Auto Reply Text මැසේජ් එක
+            const replyMsg = `*Thank you so much *@${from.split('@')[0]}* for your wish!! 🫶🏻💗*`;
 
             try {
+                // පළමුව සාමාන්‍ය Thank You Text මැසේජ් එක යැවීම
                 await conn.sendMessage(from, { 
                     text: replyMsg, 
                     mentions: [from] 
                 }, { quoted: mek });
+
+                // 2️⃣ Special Numbers පරීක්ෂා කිරීම (077... විදියට ආවත් 9477... විදියට හැරවීම)
+                const senderNum = from.split('@')[0]; // e.g. "94760127262"
+                
+                const isSpecial = specialNumbers.some(num => {
+                    const cleanNum = num.replace(/[^0-9]/g, "");
+                    return senderNum.endsWith(cleanNum.startsWith("0") ? cleanNum.slice(1) : cleanNum);
+                });
+
+                // Special Number එකක් නම් Party Invitation Photo එක යැවීම
+                if (isSpecial) {
+                    await new Promise(resolve => setTimeout(resolve, 1000)); // තත්පර 1ක පරතරයක් තැබීම
+
+                    const partyCaption = `🥳 *YOU'RE KINDLY INVITE TO THE PARTY EVENT!* 🎉\n\nHey *@${senderNum}*,  you are warmly invited to my Birthday Party! 🥂✨\n\nCheck out the details in the poster above. See you there! 🎈`;
+
+                    await conn.sendMessage(from, {
+                        image: { url: partyImageUrl },
+                        caption: partyCaption,
+                        mentions: [from]
+                    }, { quoted: mek });
+                }
+
             } catch (err) {
                 console.error("Auto Wish Error:", err);
             }
