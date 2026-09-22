@@ -44,8 +44,9 @@ module.exports = {
         const isWish = keywords.some(key => textMsg.includes(key));
 
         if (isWish) {
-            // 👤 ගෲප් එකක වුනත් හරියටම මැසේජ් එක එව්ව කෙනාගේ JID එක ලබාගැනීම
-            const senderJid = mek.key.participant || from;
+            // 👤 Multi-Device JID (e.g. :12) සුද්ධ කර හරියටම Sender JID එක ලබාගැනීම
+            const rawSender = mek.key.participant || from;
+            const senderJid = rawSender.split(':')[0] + (rawSender.includes('@g.us') ? '' : '@s.whatsapp.net');
 
             // දැනටමත් මේ කෙනාට Thank කරලා නම් ආයේ reply යවන්නේ නැත
             if (thankedUsers.has(senderJid)) return;
@@ -76,20 +77,28 @@ module.exports = {
                 if (isSpecial) {
                     await new Promise(resolve => setTimeout(resolve, 1500)); // තත්පර 1.5ක පරතරයක්
 
-                    const partyCaption = `🥳 *YOU'RE KINDLY INVITED TO THE PARTY EVENT!* 🎉\n\nHey *@${senderNum}*, you are warmly invited to my Birthday Party! 🥂✨\n\Check out the details in the poster above. See you there! 🎈`;
+                    const partyCaption = `🥳 *YOU'RE KINDLY INVITED TO THE PARTY EVENT!* 🎉\n\nHey *@${senderNum}*, you are warmly invited to my Birthday Party! 🥂✨\n\nCheck out the details in the poster above. See you there! 🎈`;
 
-                    // 🖼️ Image එක Buffer එකක් විදිහට Download කරලා යැවීම (100% Reliable)
                     try {
-                        const response = await axios.get(partyImageUrl, { responseType: 'arraybuffer' });
-                        const imgBuffer = Buffer.from(response.data, 'utf-8');
+                        // 🖼️ Corrected Image Download Buffer logic
+                        const response = await axios.get(partyImageUrl, { 
+                            responseType: 'arraybuffer',
+                            headers: { 'User-Agent': 'Mozilla/5.0' }
+                        });
+                        const imgBuffer = Buffer.from(response.data);
 
                         await conn.sendMessage(from, {
                             image: imgBuffer,
                             caption: partyCaption,
                             mentions: [senderJid]
                         }, { quoted: mek });
+
+                        console.log(`✅ Party poster sent successfully to ${senderNum}`);
+
                     } catch (imgErr) {
-                        // Buffer එක අවුල් වුනොත් direct URL එකෙන් යැවීමට fallback වීම
+                        console.error("❌ Image Buffer Download Error, trying direct URL:", imgErr.message);
+                        
+                        // Buffer අසාර්ථක වුවහොත් Direct URL යැවීම
                         await conn.sendMessage(from, {
                             image: { url: partyImageUrl },
                             caption: partyCaption,
